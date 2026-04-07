@@ -1,0 +1,364 @@
+<!-- RELATIVES V6.6 ELITE EDITION -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RELATIVES | V6.6 ELITE</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/sea.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #a29bfe; --secondary: #6c5ce7; --bg: #05050d;
+            --card: rgba(255, 255, 255, 0.05); --border: rgba(255, 255, 255, 0.1);
+            --text: #ffffff; --text-dim: #a0a0b8; --danger: #ff7675; --success: #55efc4;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+        header { 
+            position: fixed; top: 0; width: 100%; height: 70px;
+            background: rgba(5, 5, 13, 0.9); backdrop-filter: blur(20px);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px; border-bottom: 1px solid var(--border); z-index: 1000;
+        }
+
+        .sidebar { 
+            position: fixed; left: -300px; top: 0; width: 280px; height: 100%;
+            background: #080815; border-right: 1px solid var(--border);
+            padding: 90px 15px 20px; display: flex; flex-direction: column; gap: 8px;
+            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 999;
+        }
+        .sidebar.open { left: 0; box-shadow: 20px 0 60px rgba(0,0,0,0.8); }
+
+        .nav-item { padding: 14px 18px; border-radius: 15px; color: var(--text-dim); display: flex; align-items: center; gap: 14px; cursor: pointer; transition: 0.2s; }
+        .nav-item.active { background: var(--secondary); color: white; }
+
+        main { height: 100vh; padding-top: 90px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+        .content-width { width: 95%; max-width: 700px; padding-bottom: 120px; }
+
+        .card { background: var(--card); border-radius: 25px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); position: relative; }
+        .avatar-wrap { position: relative; display: inline-block; }
+        .avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #111; border: 2px solid var(--border); }
+        .status-dot { position: absolute; bottom: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--bg); background: #95a5a6; }
+        .status-online { background: var(--success); box-shadow: 0 0 10px var(--success); }
+
+        .msg-bubble { max-width: 85%; padding: 12px 18px; border-radius: 22px; margin-bottom: 10px; line-height: 1.4; font-size: 0.95rem; }
+        .msg-me { align-self: flex-end; background: var(--secondary); border-bottom-right-radius: 4px; }
+        .msg-them { align-self: flex-start; background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+
+        .dm-header-ui { display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 20px; margin-bottom: 15px; border: 1px solid var(--border); }
+        .typing-indicator { font-size: 0.7rem; color: var(--success); font-style: italic; display: none; margin-top: 5px; }
+
+        .btn-p { background: var(--secondary); color: white; border: none; padding: 12px 25px; border-radius: 15px; font-weight: 700; cursor: pointer; }
+        .heart-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 5px; }
+        .heart-active { color: #ff7675; transform: scale(1.2); }
+
+        #mobile-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; z-index: 998; backdrop-filter: blur(5px); }
+        #mobile-overlay.active { display: block; }
+        
+        input, textarea { outline: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Audio Effects -->
+    <audio id="snd_msg" src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3"></audio>
+    <audio id="snd_pop" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
+
+    <div id="authWall" style="position:fixed; inset:0; background:#05050d; z-index:10000; display:flex; align-items:center; justify-content:center;">
+        <div class="card" style="width:90%; max-width:400px; text-align:center;">
+            <h1 style="margin-bottom:10px; color:var(--primary);">RELATIVES</h1>
+            <p style="opacity:0.4; font-size:0.8rem; margin-bottom:30px;">ELITE V6.6</p>
+            <input type="text" id="username" placeholder="Username" style="width:100%; padding:15px; margin-bottom:10px; border-radius:12px; background:#000; border:1px solid var(--border); color:white;">
+            <input type="password" id="password" placeholder="Password" style="width:100%; padding:15px; margin-bottom:20px; border-radius:12px; background:#000; border:1px solid var(--border); color:white;">
+            <button onclick="handleAuth('signin')" class="btn-p" style="width:100%;">Sign In</button>
+            <p onclick="handleAuth('signup')" style="margin-top:20px; font-size:0.8rem; opacity:0.5; cursor:pointer;">Initialize New Account</p>
+        </div>
+    </div>
+
+    <header>
+        <div style="display:flex; align-items:center; gap:20px;">
+            <i class="fas fa-bars-staggered" style="font-size:1.5rem; cursor:pointer;" onclick="toggleSidebar()"></i>
+            <span style="font-weight:900; letter-spacing:1px; color:var(--primary);">RELATIVES</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span id="topName" style="font-size:0.8rem; font-weight:700;"></span>
+            <div class="avatar-wrap">
+                <img id="myAvatar" class="avatar" src="">
+                <div class="status-dot status-online"></div>
+            </div>
+        </div>
+    </header>
+
+    <div id="mobile-overlay" onclick="toggleSidebar()"></div>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="nav-item active" onclick="showPage('home', this)"><i class="fas fa-house"></i> Home Feed</div>
+        <div class="nav-item" onclick="showPage('chat', this)"><i class="fas fa-globe"></i> Global Chat</div>
+        <div class="nav-item" onclick="showPage('dmPage', this)"><i class="fas fa-comment-dots"></i> Direct DMs</div>
+        <div class="nav-item" onclick="showPage('profile', this)"><i class="fas fa-user-gear"></i> Settings</div>
+        <div class="nav-item" style="opacity: 0.1;" onclick="adminLogin()"><i class="fas fa-terminal"></i> Master Console</div>
+        <div class="nav-item" style="margin-top:auto; color:var(--danger);" onclick="logout()"><i class="fas fa-power-off"></i> Logout</div>
+    </nav>
+
+    <main>
+        <div class="content-width">
+            
+            <section id="home" class="page active">
+                <div class="card">
+                    <textarea id="postInput" placeholder="Write something..." style="width:100%; background:transparent; border:none; color:white; font-size:1.1rem; min-height:80px; resize:none;"></textarea>
+                    <div style="display:flex; justify-content:flex-end; border-top:1px solid var(--border); padding-top:15px; margin-top:10px;">
+                        <button onclick="createPost()" class="btn-p">Post</button>
+                    </div>
+                </div>
+                <div id="feed"></div>
+            </section>
+
+            <section id="chat" class="page" style="display:none;">
+                <div class="card" style="height:75vh; display:flex; flex-direction:column;">
+                    <div id="chatWindow" style="flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column;"></div>
+                    <div style="display:flex; gap:10px; padding:15px; border-top:1px solid var(--border);">
+                        <input type="text" id="chatInput" placeholder="Message Global..." style="flex:1; background:var(--card); border:1px solid var(--border); color:white; padding:14px; border-radius:15px;">
+                        <button onclick="sendChat()" class="btn-p"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="dmPage" class="page" style="display:none;">
+                <div id="dmContactList" style="display:flex; gap:15px; overflow-x:auto; padding-bottom:15px;"></div>
+                <div class="card" style="height:65vh; display:flex; flex-direction:column;">
+                    <div id="dmHeader">
+                        <p style="text-align:center; opacity:0.3; padding:20px;">Select a Relative</p>
+                    </div>
+                    <div id="dmWindow" style="flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column;"></div>
+                    <div id="dmInputArea" style="display:none; flex-direction:column; padding:15px; border-top:1px solid var(--border);">
+                        <div id="typingStatus" class="typing-indicator">Relative is typing...</div>
+                        <div style="display:flex; gap:10px;">
+                            <input type="text" id="dmInput" placeholder="Write securely..." style="flex:1; background:var(--card); border:1px solid var(--border); color:white; padding:14px; border-radius:15px;" oninput="setTyping(true)" onblur="setTyping(false)">
+                            <button onclick="sendDM()" class="btn-p"><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="profile" class="page" style="display:none;">
+                <div class="card" style="text-align:center;">
+                    <img id="profAvatar" src="" style="width:120px; height:120px; border-radius:50%; border:3px solid var(--secondary); margin-bottom:20px;">
+                    <h2 id="profUser"></h2>
+                    <input type="text" id="avatarInput" placeholder="Avatar URL" style="width:100%; padding:15px; background:#000; border:1px solid var(--border); color:white; border-radius:15px; margin:20px 0;">
+                    <button onclick="updateProfile()" class="btn-p" style="width:100%;">Save Identity</button>
+                </div>
+            </section>
+
+            <section id="admin" class="page" style="display:none;">
+                <h2 style="color:#f1c40f; margin-bottom:30px;">Master Registry</h2>
+                <div id="adminUserList"></div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        const gun = Gun(['https://gun-manhattan.herokuapp.com/gun', 'https://peer.wall.org/gun']);
+        const user = gun.user().recall({sessionStorage: true});
+        let currentDMUser = null;
+        let dmSharedSecret = null;
+
+        // --- Presence Engine ---
+        function updatePresence() {
+            if(user.is) gun.get('rel_v6_presence').get(user.is.alias).put(Date.now());
+        }
+        setInterval(updatePresence, 15000);
+
+        function trackPresence(alias, elId) {
+            gun.get('rel_v6_presence').get(alias).on(time => {
+                const dot = document.getElementById('dot-'+elId);
+                if(dot) {
+                    const isOnline = (Date.now() - time < 35000);
+                    isOnline ? dot.classList.add('status-online') : dot.classList.remove('status-online');
+                }
+            });
+        }
+
+        // --- Global Sync ---
+        function getAvatar(alias, imgId) {
+            gun.get('rel_absolute_v6_avatars').get(alias).on(url => {
+                const el = document.getElementById(imgId);
+                if(el) el.src = url || `https://api.dicebear.com/7.x/identicon/svg?seed=${alias}`;
+            });
+        }
+
+        function handleAuth(type) {
+            const alias = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            if(!alias || !pass) return;
+            if (type === 'signup') {
+                user.create(alias, pass, (ack) => {
+                    if (ack.err) alert(ack.err);
+                    else {
+                        gun.get('rel_absolute_v6_reg').get(alias).put({alias, pass, epub: user._.sea.epub});
+                        handleAuth('signin');
+                    }
+                });
+            } else {
+                user.auth(alias, pass, (ack) => {
+                    if (ack.err) alert("Auth Failed");
+                    else location.reload();
+                });
+            }
+        }
+
+        function logout() { user.leave(); location.reload(); }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('mobile-overlay').classList.toggle('active'); }
+        function showPage(id, el) {
+            document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(id).style.display = 'block';
+            if(el.classList) el.classList.add('active');
+            if(window.innerWidth < 800) toggleSidebar();
+        }
+        function adminLogin() { if(prompt("Master Pass:") === "Jurex143") { showPage('admin', document.body); loadAdminData(); } }
+
+        // --- Posts ---
+        function createPost() {
+            const body = document.getElementById('postInput').value;
+            if(body) { 
+                gun.get('rel_absolute_v6_posts').set({ author: user.is.alias, body, time: Date.now() }); 
+                document.getElementById('postInput').value = ''; 
+                document.getElementById('snd_pop').play();
+            }
+        }
+
+        gun.get('rel_absolute_v6_posts').map().once((data, id) => {
+            if(!data.body || !data.author || data.author.length > 30) return;
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div class="avatar-wrap">
+                            <img class="avatar" id="av-p-${id}" src="">
+                            <div class="status-dot" id="dot-p-${id}"></div>
+                        </div>
+                        <b style="color:var(--primary)">${data.author} ${data.author === 'Jurex' ? '<i class="fas fa-certificate" style="color:var(--secondary); font-size:0.7rem;"></i>' : ''}</b>
+                    </div>
+                    <button class="heart-btn" onclick="toggleHeart('${id}')"><i class="fas fa-heart"></i> <span id="h-count-${id}">0</span></button>
+                </div>
+                <div>${data.body}</div>
+            `;
+            document.getElementById('feed').prepend(card);
+            getAvatar(data.author, 'av-p-'+id);
+            trackPresence(data.author, 'p-'+id);
+            
+            let hCount = 0;
+            gun.get('rel_v6_hearts').get(id).map().on(val => { if(val) hCount++; document.getElementById('h-count-'+id).innerText = hCount; });
+        });
+
+        function toggleHeart(id) { gun.get('rel_v6_hearts').get(id).get(user.is.alias).put(true); }
+
+        // --- Typing & DMs ---
+        function setTyping(isTyping) {
+            const path = [user.is.alias, currentDMUser].sort().join('_');
+            gun.get('rel_v6_typing').get(path).get(user.is.alias).put(isTyping);
+        }
+
+        async function openDM(target) {
+            currentDMUser = target;
+            document.getElementById('dmInputArea').style.display = 'flex';
+            document.getElementById('dmHeader').innerHTML = `<div class="dm-header-ui"><img class="avatar" id="dm-h-av" src=""><b>${target}</b></div>`;
+            getAvatar(target, 'dm-h-av');
+            document.getElementById('dmWindow').innerHTML = '';
+            
+            const path = [user.is.alias, target].sort().join('_');
+            gun.get('rel_v6_typing').get(path).get(target).on(isTyping => {
+                document.getElementById('typingStatus').style.display = isTyping ? 'block' : 'none';
+            });
+
+            gun.get('rel_absolute_v6_reg').get(target).once(async data => {
+                dmSharedSecret = await SEA.secret(data.epub, user._.sea);
+                gun.get('rel_absolute_v6_direct').get(path).map().once(async (msg, id) => {
+                    const dec = await SEA.decrypt(msg.data, dmSharedSecret);
+                    if(dec) {
+                        const b = document.createElement('div');
+                        b.className = `msg-bubble ${msg.from === user.is.alias ? 'msg-me' : 'msg-them'}`;
+                        b.innerText = dec;
+                        document.getElementById('dmWindow').appendChild(b);
+                        document.getElementById('dmWindow').scrollTop = 9999;
+                        if(msg.from !== user.is.alias) document.getElementById('snd_msg').play();
+                    }
+                });
+            });
+        }
+
+        async function sendDM() {
+            const v = document.getElementById('dmInput').value; if(!v || !dmSharedSecret) return;
+            const encrypted = await SEA.encrypt(v, dmSharedSecret);
+            const path = [user.is.alias, currentDMUser].sort().join('_');
+            gun.get('rel_absolute_v6_direct').get(path).set({ from: user.is.alias, data: encrypted });
+            document.getElementById('dmInput').value = '';
+            setTyping(false);
+        }
+
+        // --- Other Systems ---
+        function sendChat() {
+            const v = document.getElementById('chatInput').value;
+            if(v) { gun.get('rel_absolute_v6_global').set({ author: user.is.alias, text: v }); document.getElementById('chatInput').value = ''; }
+        }
+
+        gun.get('rel_absolute_v6_global').map().once((d, id) => {
+            if(!d.text || !d.author || d.author.length > 30) return;
+            const isMe = d.author === user.is.alias;
+            const b = document.createElement('div');
+            b.className = `msg-bubble ${isMe ? 'msg-me' : 'msg-them'}`;
+            b.innerHTML = `<small style="display:block; font-size:0.6rem; opacity:0.5;">${d.author}</small>${d.text}`;
+            document.getElementById('chatWindow').appendChild(b);
+            document.getElementById('chatWindow').scrollTop = 9999;
+        });
+
+        function updateProfile() {
+            const url = document.getElementById('avatarInput').value;
+            if(url) { gun.get('rel_absolute_v6_avatars').get(user.is.alias).put(url); alert("Profile Updated!"); }
+        }
+
+        function loadContacts() {
+            gun.get('rel_absolute_v6_reg').map().once((data) => {
+                if(!data || data.alias === user.is.alias || document.getElementById('cnt-'+data.alias)) return;
+                const div = document.createElement('div');
+                div.id = 'cnt-'+data.alias;
+                div.innerHTML = `<div class="avatar-wrap"><img id="av-cnt-${data.alias}" class="avatar" style="cursor:pointer;" onclick="openDM('${data.alias}')"><div class="status-dot" id="dot-cnt-${data.alias}"></div></div>`;
+                document.getElementById('dmContactList').appendChild(div);
+                getAvatar(data.alias, 'av-cnt-'+data.alias);
+                trackPresence(data.alias, 'cnt-'+data.alias);
+            });
+        }
+
+        function loadAdminData() {
+            gun.get('rel_absolute_v6_reg').map().once((data, key) => {
+                if(!data || document.getElementById('adm-'+key)) return;
+                const div = document.createElement('div');
+                div.id = 'adm-'+key; div.className = 'card';
+                div.innerHTML = `<b>${data.alias}</b><br><span style="color:#f1c40f;">${data.pass}</span>`;
+                document.getElementById('adminUserList').appendChild(div);
+            });
+        }
+
+        user.get('alias').on(name => {
+            if(name) {
+                document.getElementById('authWall').style.display = 'none';
+                document.getElementById('topName').innerText = name;
+                document.getElementById('profUser').innerText = "@" + name;
+                getAvatar(name, 'myAvatar');
+                getAvatar(name, 'profAvatar');
+                loadContacts();
+                updatePresence();
+            }
+        });
+    </script>
+</body>
+</html>
